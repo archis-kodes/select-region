@@ -22,7 +22,8 @@
       border-radius: 20px;
       box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
       text-align: center;
-      min-width: 300px;
+      width: 320px;
+      min-height: 460px;
     }
 
     .card h2 {
@@ -145,7 +146,7 @@
       const city = cities.find(c => c.id == cityId)?.name || 'N/A';
 
       document.getElementById("result").innerText =
-        `Selected Location: ${country} > ${state} > ${city}`;
+        `${city}, ${state}, ${country}`;
     }
 
     window.onload = loadData;
