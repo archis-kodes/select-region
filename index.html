@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Country State City Dropdown</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    select {
+      margin: 10px 0;
+      padding: 5px;
+      width: 250px;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Select Location</h2>
+
+  <label>Country:</label><br>
+  <select id="country" onchange="onCountryChange()">
+    <option value="">Select Country</option>
+  </select><br>
+
+  <label>State:</label><br>
+  <select id="state" onchange="onStateChange()">
+    <option value="">Select State</option>
+  </select><br>
+
+  <label>City:</label><br>
+  <select id="city">
+    <option value="">Select City</option>
+  </select>
+
+  <script>
+    let countries = [];
+    let states = [];
+    let cities = [];
+
+    // Load JSON files
+    async function loadData() {
+      countries = await fetch("countries.json").then(res => res.json());
+      states = await fetch("states.json").then(res => res.json());
+      cities = await fetch("cities.json").then(res => res.json());
+
+      populateCountries();
+    }
+
+    function populateCountries() {
+      const countrySelect = document.getElementById("country");
+      countries.forEach(country => {
+        const option = document.createElement("option");
+        option.value = country.id;
+        option.text = country.name;
+        countrySelect.add(option);
+      });
+    }
+
+    function onCountryChange() {
+      const countryId = document.getElementById("country").value;
+      const stateSelect = document.getElementById("state");
+      const citySelect = document.getElementById("city");
+
+      stateSelect.length = 1;
+      citySelect.length = 1;
+
+      const filteredStates = states.filter(state => state.country_id == countryId);
+      filteredStates.forEach(state => {
+        const option = document.createElement("option");
+        option.value = state.id;
+        option.text = state.name;
+        stateSelect.add(option);
+      });
+    }
+
+    function onStateChange() {
+      const stateId = document.getElementById("state").value;
+      const citySelect = document.getElementById("city");
+
+      citySelect.length = 1;
+
+      const filteredCities = cities.filter(city => city.state_id == stateId);
+      filteredCities.forEach(city => {
+        const option = document.createElement("option");
+        option.value = city.id;
+        option.text = city.name;
+        citySelect.add(option);
+      });
+    }
+
+    // Load on page load
+    window.onload = loadData;
+  </script>
+
+</body>
+</html>
