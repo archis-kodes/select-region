@@ -2,49 +2,94 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Country State City Dropdown</title>
+  <title>Poultry Farm Locator</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
+      margin: 0;
+      padding: 0;
+      background: url('bg.png') no-repeat center center fixed;
+      background-size: cover;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
     }
-    select {
+
+    .card {
+      background: rgba(255, 255, 255, 0.95);
+      padding: 30px 40px;
+      border-radius: 20px;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+      text-align: center;
+      min-width: 300px;
+    }
+
+    .card h2 {
+      margin-bottom: 20px;
+      font-size: 24px;
+      color: #333;
+    }
+
+    select, button {
+      width: 100%;
+      padding: 10px;
       margin: 10px 0;
-      padding: 5px;
-      width: 250px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      background-color: #28a745;
+      color: white;
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #218838;
+    }
+
+    #result {
+      margin-top: 20px;
+      font-weight: bold;
+      color: #444;
     }
   </style>
 </head>
 <body>
 
-  <h2>Select Location</h2>
+  <div class="card">
+    <h2>Poultry Farm Locator</h2>
 
-  <label>Country:</label><br>
-  <select id="country" onchange="onCountryChange()">
-    <option value="">Select Country</option>
-  </select><br>
+    <select id="country" onchange="onCountryChange()">
+      <option value="">Select Country</option>
+    </select>
 
-  <label>State:</label><br>
-  <select id="state" onchange="onStateChange()">
-    <option value="">Select State</option>
-  </select><br>
+    <select id="state" onchange="onStateChange()">
+      <option value="">Select State</option>
+    </select>
 
-  <label>City:</label><br>
-  <select id="city">
-    <option value="">Select City</option>
-  </select>
+    <select id="city">
+      <option value="">Select City</option>
+    </select>
+
+    <button onclick="showResult()">SEARCH</button>
+
+    <div id="result"></div>
+  </div>
 
   <script>
     let countries = [];
     let states = [];
     let cities = [];
 
-    // Load JSON files
     async function loadData() {
       countries = await fetch("countries.json").then(res => res.json());
       states = await fetch("states.json").then(res => res.json());
       cities = await fetch("cities.json").then(res => res.json());
-
       populateCountries();
     }
 
@@ -90,7 +135,19 @@
       });
     }
 
-    // Load on page load
+    function showResult() {
+      const countryId = document.getElementById("country").value;
+      const stateId = document.getElementById("state").value;
+      const cityId = document.getElementById("city").value;
+
+      const country = countries.find(c => c.id == countryId)?.name || 'N/A';
+      const state = states.find(s => s.id == stateId)?.name || 'N/A';
+      const city = cities.find(c => c.id == cityId)?.name || 'N/A';
+
+      document.getElementById("result").innerText =
+        `Selected Location: ${country} > ${state} > ${city}`;
+    }
+
     window.onload = loadData;
   </script>
 
