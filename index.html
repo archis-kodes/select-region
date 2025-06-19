@@ -16,6 +16,27 @@
       height: 100vh;
     }
 
+    .admin-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 10;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.admin-btn img {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  box-shadow: 0 0 8px rgba(0,0,0,0.2);
+}
+
+.admin-btn:hover {
+  transform: scale(1.1);
+}
+
+
     .card {
       background: rgba(255, 255, 255, 0.95);
       padding: 30px 40px;
@@ -151,6 +172,9 @@
 
     window.onload = loadData;
   </script>
+<a href="admin.html" class="admin-btn">
+  <img src="admin.png" alt="Admin" />
+</a>
 
 </body>
 </html>

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Manage Poultry Farms</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: url('bg.png') no-repeat center center fixed;
+      background-size: cover;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    .header-card {
+  background-color: greenyellow;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  text-align: center;
+  max-width: 600px;
+  position: relative;
+  margin: 15px auto;
+}
+
+    .card {
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      margin: 15px auto;
+      padding: 20px;
+      max-width: 600px;
+      position: relative;
+    }
+    .card h2 {
+      margin: 0;
+      color: #4caf50;
+    }
+    .card p {
+      margin: 5px 0;
+    }
+    .card-buttons {
+      margin-top: 15px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .btn-direction {
+      background-color: #4caf50;
+      color: white;
+    }
+    .btn-delete {
+      background-color: #dc3545;
+      color: white;
+    }
+    .btn:hover {
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+<div class="header-card">
+    <h1>Manage Poultry Farms</h1>
+</div>
+<div id="farm-list"></div>
+
+<script>
+  // Firebase Config
+  const firebaseConfig = {
+    apiKey: "AIzaSyBDLcg7dMW2xvhxXHRY8nwHiM-aMFYsLZw",
+    authDomain: "poultry-farm-project.firebaseapp.com",
+    databaseURL: "https://poultry-farm-project-default-rtdb.firebaseio.com",
+    projectId: "poultry-farm-project",
+    storageBucket: "poultry-farm-project.appspot.com",
+    messagingSenderId: "1030106536889",
+    appId: "1:1030106536889:web:475a5a404bf3715f94b468",
+    measurementId: "G-RW1Y8C8SFX"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  const params = new URLSearchParams(window.location.search);
+  const city = params.get("city") || "";
+  const state = params.get("state") || "";
+  const country = params.get("country") || "";
+
+  const farmList = document.getElementById("farm-list");
+
+  function createFarmCard(key, farm) {
+    const card = document.createElement("div");
+    card.className = "card";
+
+    card.innerHTML = `
+      <h2>${farm.name}</h2>
+      <p><strong>Owner:</strong> ${farm.owner}</p>
+      <p><strong>Address:</strong> ${farm.city}, ${farm.state}, ${farm.country}</p>
+      <p><strong>Latitude:</strong> ${farm.lat}</p>
+      <p><strong>Longitude:</strong> ${farm.lon}</p>
+      <div class="card-buttons">
+        <button class="btn btn-direction" onclick="window.open('https://www.google.com/maps/search/?api=1&query=${farm.lat},${farm.lon}', '_blank')">Get Directions</button>
+        <button class="btn btn-delete" onclick="deleteFarm('${key}')">Delete</button>
+      </div>
+    `;
+
+    farmList.appendChild(card);
+  }
+
+  function deleteFarm(key) {
+    if (!confirm("Are you sure you want to delete this farm?")) return;
+    db.ref("farms/" + key).remove()
+      .then(() => {
+        alert("Farm deleted successfully");
+        location.reload();
+      })
+      .catch(err => {
+        console.error("Delete failed:", err);
+        alert("Failed to delete farm.");
+      });
+  }
+
+  db.ref("farms").once("value", snapshot => {
+    const data = snapshot.val();
+    if (!data) {
+      farmList.innerHTML = "<p>No farms found.</p>";
+      return;
+    }
+
+    const entries = Object.entries(data);
+    let found = false;
+    entries.forEach(([key, farm]) => {
+      if (
+        (farm.city || "").toLowerCase() === city.toLowerCase() &&
+        (farm.state || "").toLowerCase() === state.toLowerCase() &&
+        (farm.country || "").toLowerCase() === country.toLowerCase()
+      ) {
+        found = true;
+        createFarmCard(key, farm);
+      }
+    });
+
+    if (!found) {
+      farmList.innerHTML = "<p>No farms found in this location.</p>";
+    }
+  });
+</script>
+
+</body>
+</html>
