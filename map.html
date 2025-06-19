@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Poultry Farm Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f0f8ff;
+    }
+    #map {
+      height: 100vh;
+      width: 100%;
+    }
+    #farm-card {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 16px 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+      z-index: 1000;
+      display: none;
+      width: 280px;
+    }
+    #farm-card h3 {
+      margin: 0 0 10px 0;
+      font-size: 18px;
+      color: #333;
+    }
+    #farm-card p {
+      margin: 4px 0;
+      font-size: 14px;
+      color: #555;
+    }
+    #directions-btn {
+      margin-top: 10px;
+      background-color: #4caf50;
+      color: white;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      text-align: center;
+      display: inline-block;
+    }
+    #directions-btn:hover {
+      background-color: #43a047;
+    }
+  </style>
+</head>
+<body>
+<div id="map"></div>
+<div id="farm-card">
+  <h3 id="card-name"></h3>
+  <p><strong>Owner:</strong> <span id="card-owner"></span></p>
+  <p><strong>Address:</strong> <span id="card-address"></span></p>
+  <p><strong>Latitude:</strong> <span id="card-lat"></span></p>
+  <p><strong>Longitude:</strong> <span id="card-lon"></span></p>
+  <button id="directions-btn" onclick="openDirections()">Directions</button>
+</div>
+
+<script>
+  let selectedLat = 0;
+  let selectedLon = 0;
+
+  // Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyBDLcg7dMW2xvhxXHRY8nwHiM-aMFYsLZw",
+    authDomain: "poultry-farm-project.firebaseapp.com",
+    databaseURL: "https://poultry-farm-project-default-rtdb.firebaseio.com",
+    projectId: "poultry-farm-project",
+    storageBucket: "poultry-farm-project.appspot.com",
+    messagingSenderId: "1030106536889",
+    appId: "1:1030106536889:web:475a5a404bf3715f94b468",
+    measurementId: "G-RW1Y8C8SFX"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  const params = new URLSearchParams(window.location.search);
+  const city = params.get("city") || "";
+  const state = params.get("state") || "";
+  const country = params.get("country") || "";
+
+  const map = L.map('map').setView([20.5937, 78.9629], 5);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  // Red marker icon
+  const redIcon = new L.Icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+  });
+
+  // Load city boundary
+  fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(city + ', ' + state + ', ' + country)}&polygon_geojson=1`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.length === 0) {
+        alert("City not found");
+        return;
+      }
+
+      const place = data[0];
+      const lat = parseFloat(place.lat);
+      const lon = parseFloat(place.lon);
+
+      map.setView([lat, lon], 13);
+
+      if (place.geojson) {
+        L.geoJSON(place.geojson, {
+          style: {
+            color: "#66bb6a",
+            fillColor: "#a5d6a7",
+            fillOpacity: 0.3
+          }
+        }).addTo(map);
+      }
+
+      // Load farms from Firebase
+      db.ref("farms").once("value", snapshot => {
+        const farms = snapshot.val();
+        if (!farms) return;
+
+        Object.values(farms).forEach(farm => {
+          if (farm.city?.toLowerCase() === city.toLowerCase()) {
+            const marker = L.marker([farm.lat, farm.lon], { icon: redIcon })
+              .addTo(map)
+              .bindPopup(`<strong>${farm.name}</strong><br>${farm.city}, ${farm.state}`);
+
+            marker.on('click', () => {
+              selectedLat = farm.lat;
+              selectedLon = farm.lon;
+
+              document.getElementById("card-name").innerText = farm.name;
+              document.getElementById("card-owner").innerText = farm.owner;
+              document.getElementById("card-address").innerText = `${farm.city}, ${farm.state}, ${farm.country}`;
+              document.getElementById("card-lat").innerText = farm.lat.toFixed(6);
+              document.getElementById("card-lon").innerText = farm.lon.toFixed(6);
+              document.getElementById("farm-card").style.display = "block";
+            });
+          }
+        });
+      });
+    })
+    .catch(err => {
+      console.error("City fetch error:", err);
+      alert("Could not load city location.");
+    });
+
+  function openDirections() {
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${selectedLat},${selectedLon}`;
+    window.open(url, '_blank');
+  }
+</script>
+</body>
+</html>

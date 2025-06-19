@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Poultry Farm Locator</title>
+  <title>Admin Panel - Poultry Farm Locator</title>
   <style>
     body {
       margin: 0;
@@ -23,7 +23,7 @@
       box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
       text-align: center;
       width: 320px;
-      min-height: 460px;
+      min-height: 480px;
     }
 
     .card h2 {
@@ -32,8 +32,18 @@
       color: #333;
     }
 
-    select, button {
+    select {
       width: 100%;
+      align-items: center;
+      padding: 10px;
+      margin: 10px 0;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    input[type="password"] {
+      width: 94%;
+      align-items: center;
       padding: 10px;
       margin: 10px 0;
       font-size: 16px;
@@ -43,9 +53,14 @@
 
     button {
       background-color: #28a745;
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      font-size: 16px;
       color: white;
       border: none;
       font-weight: bold;
+      border-radius: 8px;
       cursor: pointer;
     }
 
@@ -53,17 +68,21 @@
       background-color: #218838;
     }
 
-    #result {
-      margin-top: 20px;
-      font-weight: bold;
-      color: #444;
+    .hidden {
+      display: none;
     }
   </style>
 </head>
 <body>
 
-  <div class="card">
-    <h2>Poultry Farm Locator</h2>
+  <div class="card" id="login-card">
+    <h2>Admin Login</h2>
+    <input type="password" id="admin-password" placeholder="Enter admin password">
+    <button onclick="checkPassword()">Login</button>
+  </div>
+
+  <div class="card hidden" id="admin-card">
+    <h2>Poultry Farm Admin</h2>
 
     <select id="country" onchange="onCountryChange()">
       <option value="">Select Country</option>
@@ -77,9 +96,8 @@
       <option value="">Select City</option>
     </select>
 
-    <button onclick="showResult()">SEARCH</button>
-
-    <div id="result"></div>
+    <button onclick="manageFarms()">Manage Farms</button>
+    <button onclick="addFarm()">Add New Farm</button>
   </div>
 
   <script>
@@ -136,20 +154,46 @@
       });
     }
 
-    function showResult() {
+    function checkPassword() {
+      const input = document.getElementById("admin-password").value;
+      if (input === "admin") {
+        document.getElementById("login-card").classList.add("hidden");
+        document.getElementById("admin-card").classList.remove("hidden");
+        loadData();
+      } else {
+        alert("Wrong password. Try again.");
+      }
+    }
+
+    function getSelectedLocation() {
       const countryId = document.getElementById("country").value;
       const stateId = document.getElementById("state").value;
       const cityId = document.getElementById("city").value;
 
-      const country = countries.find(c => c.id == countryId)?.name || 'N/A';
-      const state = states.find(s => s.id == stateId)?.name || 'N/A';
-      const city = cities.find(c => c.id == cityId)?.name || 'N/A';
+      const country = countries.find(c => c.id == countryId)?.name;
+      const state = states.find(s => s.id == stateId)?.name;
+      const city = cities.find(c => c.id == cityId)?.name;
 
-      window.location.href = `map.html?country=${encodeURIComponent(country)}&state=${encodeURIComponent(state)}&city=${encodeURIComponent(city)}`;
-
+      return { country, state, city };
     }
 
-    window.onload = loadData;
+    function manageFarms() {
+      const { country, state, city } = getSelectedLocation();
+      if (country && state && city) {
+        window.location.href = `manage.html?country=${encodeURIComponent(country)}&state=${encodeURIComponent(state)}&city=${encodeURIComponent(city)}`;
+      } else {
+        alert("Please select all fields.");
+      }
+    }
+
+    function addFarm() {
+      const { country, state, city } = getSelectedLocation();
+      if (country && state && city) {
+        window.location.href = `add.html?country=${encodeURIComponent(country)}&state=${encodeURIComponent(state)}&city=${encodeURIComponent(city)}`;
+      } else {
+        alert("Please select all fields.");
+      }
+    }
   </script>
 
 </body>

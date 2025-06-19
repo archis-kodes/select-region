@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Add Poultry Farm</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f0f8ff;
+    }
+
+    #map {
+      height: 100vh;
+      width: 100%;
+      position: relative;
+    }
+
+    #center-pin {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -100%);
+      z-index: 500;
+      pointer-events: none;
+    }
+
+    #confirm-btn {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 600;
+      background-color: #28a745;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+      cursor: pointer;
+    }
+
+    #confirm-btn:disabled {
+      background-color: #aaa;
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    .popup-card {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255, 255, 255, 0.95);
+      padding: 30px 40px;
+      border-radius: 20px;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+      z-index: 1000;
+      text-align: center;
+      width: 300px;
+      display: none;
+    }
+
+    .popup-card input {
+      width: 93%;
+      padding: 10px;
+      margin: 10px 0;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+
+    .popup-card button {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      font-size: 16px;
+      border-radius: 8px;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      font-weight: bold;
+    }
+
+    .popup-card button:hover {
+      background-color: #218838;
+    }
+
+    #overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.4);
+      z-index: 999;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<div id="map">
+  <img src="https://cdn-icons-png.flaticon.com/512/684/684908.png" width="40" height="40" id="center-pin" alt="center pin">
+  <button id="confirm-btn" disabled>Confirm Location</button>
+</div>
+
+<div id="overlay"></div>
+
+<div class="popup-card" id="popup-card">
+  <h3>Enter Farm Details</h3>
+  <input type="text" id="farmName" placeholder="Farm Name">
+  <input type="text" id="ownerName" placeholder="Owner Name">
+  <button id="submit-btn">Submit</button>
+</div>
+
+<script>
+  // Firebase Configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyBDLcg7dMW2xvhxXHRY8nwHiM-aMFYsLZw",
+    authDomain: "poultry-farm-project.firebaseapp.com",
+    databaseURL: "https://poultry-farm-project-default-rtdb.firebaseio.com",
+    projectId: "poultry-farm-project",
+    storageBucket: "poultry-farm-project.appspot.com",
+    messagingSenderId: "1030106536889",
+    appId: "1:1030106536889:web:475a5a404bf3715f94b468",
+    measurementId: "G-RW1Y8C8SFX"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  // Get location parameters from URL
+  const params = new URLSearchParams(window.location.search);
+  const city = params.get("city") || "";
+  const state = params.get("state") || "";
+  const country = params.get("country") || "";
+
+  const map = L.map('map').setView([20.5937, 78.9629], 5);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  const confirmBtn = document.getElementById("confirm-btn");
+  let cityPolygon = null;
+
+  // Fetch city boundary and set up turf check
+  fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(city + ', ' + state + ', ' + country)}&polygon_geojson=1`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.length === 0) {
+        alert("City not found");
+        return;
+      }
+
+      const place = data[0];
+      const lat = parseFloat(place.lat);
+      const lon = parseFloat(place.lon);
+
+      map.setView([lat, lon], 14);
+
+      if (place.geojson) {
+        cityPolygon = place.geojson;
+        L.geoJSON(cityPolygon, {
+          style: {
+            color: "#66bb6a",
+            fillColor: "#a5d6a7",
+            fillOpacity: 0.3
+          }
+        }).addTo(map);
+
+        // Enable/disable button based on whether center is inside
+        map.on("move", () => {
+          const center = map.getCenter();
+          const pt = turf.point([center.lng, center.lat]);
+          const isInside = turf.booleanPointInPolygon(pt, cityPolygon);
+          confirmBtn.disabled = !isInside;
+        });
+
+        map.fire("move"); // Trigger initial check
+      }
+    })
+    .catch(err => {
+      console.error("City fetch error:", err);
+      alert("Could not load city boundary.");
+    });
+
+  // Show form on confirm
+  confirmBtn.addEventListener("click", () => {
+    document.getElementById("overlay").style.display = "block";
+    document.getElementById("popup-card").style.display = "block";
+  });
+
+  // Submit farm
+  document.getElementById("submit-btn").addEventListener("click", () => {
+    const farmName = document.getElementById("farmName").value.trim();
+    const ownerName = document.getElementById("ownerName").value.trim();
+    const center = map.getCenter();
+
+    if (!farmName || !ownerName) {
+      alert("Please fill all fields.");
+      return;
+    }
+
+    const farmData = {
+      name: farmName,
+      owner: ownerName,
+      lat: center.lat,
+      lon: center.lng,
+      city,
+      state,
+      country
+    };
+
+    db.ref("farms").push(farmData, (err) => {
+      if (err) {
+        alert("Error saving farm: " + err.message);
+      } else {
+        alert("✅ Farm added successfully!");
+        document.getElementById("overlay").style.display = "none";
+        document.getElementById("popup-card").style.display = "none";
+        document.getElementById("farmName").value = "";
+        document.getElementById("ownerName").value = "";
+      }
+    });
+  });
+</script>
+</body>
+</html>
